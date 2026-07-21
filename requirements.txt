@@ -1,0 +1,14 @@
+pyserial
+flask
+flask-socketio
+python-dotenv
+
+# eog_controller.py -- keyboard/system actions for recognized blink
+# gestures. On macOS, the terminal/app running this needs Accessibility
+# permission (System Settings > Privacy & Security > Accessibility) for
+# pyautogui's synthetic key events to work.
+pyautogui
+
+# AI integration is not implemented -- no client exists in this repo.
+# Uncomment if one is added:
+# google-generativeai
