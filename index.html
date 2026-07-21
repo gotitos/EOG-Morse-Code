@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EMG·AI</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app">
+
+    <header class="topbar">
+      <div class="topbar__brand">
+        <span class="logo">EMG<span class="logo__accent">·</span>AI</span>
+      </div>
+      <div class="topbar__right">
+        <div class="conn-indicator" id="connIndicator">
+          <span class="conn-indicator__dot" id="connDot"></span>
+          <span class="conn-indicator__label" id="connLabel">connecting…</span>
+        </div>
+        <button class="mode-toggle" id="modeToggle" type="button">
+          <span class="mode-toggle__option is-active" data-mode="emg">EMG</span>
+          <span class="mode-toggle__sep">/</span>
+          <span class="mode-toggle__option" data-mode="eeg">EEG</span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="view-tabs" id="viewTabs">
+      <button class="view-tab is-active" data-view="emg" type="button">EMG</button>
+      <button class="view-tab" data-view="eog" type="button">EOG</button>
+      <a class="view-tab view-tab--tool" href="morse.html">MORSE &#9656;</a>
+    </nav>
+
+    <main class="layout" id="viewEmg">
+
+      <section class="panel waveform-panel">
+        <div class="panel__label">SIGNAL &mdash; LAST 5s</div>
+        <canvas id="waveform" class="waveform-canvas"></canvas>
+      </section>
+
+      <section class="lower">
+
+        <section class="panel gesture-panel">
+          <div class="panel__label">GESTURE</div>
+          <div class="gesture-grid">
+            <div class="gesture-cell">
+              <div class="gesture-cell__label">current</div>
+              <div class="gesture-current" id="gestureLabel">rest</div>
+            </div>
+            <div class="gesture-cell">
+              <div class="gesture-cell__label">confidence</div>
+              <div class="confidence-bar">
+                <div class="confidence-bar__fill" id="confidenceFill"></div>
+              </div>
+              <div class="confidence-value" id="confidenceValue">0%</div>
+            </div>
+            <div class="gesture-cell">
+              <div class="gesture-cell__label">last triggered</div>
+              <div class="gesture-timestamp" id="lastTriggered">&mdash;</div>
+            </div>
+          </div>
+
+          <div class="gesture-log__label">recent (persists across reconnects)</div>
+          <div class="gesture-log" id="gestureLog">
+            <div class="gesture-log__empty">no gestures yet</div>
+          </div>
+        </section>
+
+        <section class="panel ai-panel">
+          <div class="panel__label">AI RESPONSE</div>
+          <div class="ai-feed" id="aiFeed">
+            <div class="ai-empty" id="aiEmpty">
+              Gesture-triggered AI responses will appear here once an AI
+              client is wired up. No AI integration yet.
+            </div>
+          </div>
+        </section>
+
+      </section>
+    </main>
+
+    <main class="layout" id="viewEog" style="display: none;">
+
+      <section class="panel waveform-panel">
+        <div class="panel__label">EOG SIGNAL &mdash; LAST 5s (orange lines = detected blinks)</div>
+        <canvas id="eogWaveform" class="waveform-canvas"></canvas>
+      </section>
+
+      <section class="lower">
+
+        <section class="panel gesture-panel">
+          <div class="panel__label">GESTURE</div>
+          <div class="gesture-grid">
+            <div class="gesture-cell">
+              <div class="gesture-cell__label">current</div>
+              <div class="gesture-current" id="eogGestureLabel">&mdash;</div>
+            </div>
+            <div class="gesture-cell">
+              <div class="gesture-cell__label">duration</div>
+              <div class="gesture-timestamp" id="eogDuration">&mdash;</div>
+            </div>
+            <div class="gesture-cell">
+              <div class="gesture-cell__label">last triggered</div>
+              <div class="gesture-timestamp" id="eogLastTriggered">&mdash;</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel ai-panel">
+          <div class="panel__label">ACTION LOG &mdash; LAST 10</div>
+          <div class="gesture-log" id="eogActionLog">
+            <div class="gesture-log__empty">no actions yet</div>
+          </div>
+        </section>
+
+      </section>
+    </main>
+
+    <footer class="statusbar" id="statusbar">
+      <span class="statusbar__item"><span class="statusbar__key">port</span><span id="statPort">&mdash;</span></span>
+      <span class="statusbar__item"><span class="statusbar__key">baud</span><span id="statBaud">&mdash;</span></span>
+      <span class="statusbar__item"><span class="statusbar__key">samples/sec</span><span id="statRate">0</span></span>
+      <span class="statusbar__item"><span class="statusbar__key">window</span><span id="statWindow">&mdash;</span></span>
+      <span class="statusbar__item"><span class="statusbar__key">model</span><span id="statModel">&mdash;</span></span>
+    </footer>
+
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

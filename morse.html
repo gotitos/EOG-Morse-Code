@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EMG·MORSE</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Reuses static/style.css for the shared dashboard chrome (topbar,
+       panel, conn-indicator, CSS variables) -- everything below is just
+       the additions specific to this page. Spec calls for JetBrains
+       Mono throughout, overriding style.css's Inter body font. */
+    html, body { font-family: var(--font-data); overflow: hidden; }
+    .app { min-width: 0; }
+
+    .back-link {
+      font-family: var(--font-data);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      background: var(--panel-bg);
+    }
+
+    .back-link:hover { border-color: var(--accent-dim); color: var(--text-primary); }
+
+    /* ---- about tooltip ---- */
+
+    .about-wrap { position: relative; }
+
+    .about-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--panel-border);
+      background: var(--panel-bg);
+      color: var(--text-secondary);
+      font-family: var(--font-data);
+      font-size: 13px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .about-btn:hover, .about-btn[aria-expanded="true"] {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .about-popover {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 320px;
+      max-width: calc(100vw - 32px);
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 20;
+    }
+
+    .about-popover strong { color: var(--text-primary); }
+
+    /* ---- top panel: current letter builder ---- */
+
+    .builder-panel { flex: 0 0 auto; }
+
+    .panel__label { display: flex; align-items: center; justify-content: space-between; }
+
+    .gesture-pill {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      text-transform: none;
+    }
+
+    .gesture-pill__label { color: var(--accent); text-transform: lowercase; }
+    .gesture-pill__label[data-gesture="hard_hold"] { color: var(--gesture-hard); }
+    .gesture-pill__label[data-gesture="rest"] { color: var(--text-dim); }
+
+    .builder-body {
+      position: relative;
+      min-height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .builder-symbols {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+    }
+
+    .builder-symbols:empty::after {
+      content: "blink to begin a letter";
+      color: var(--text-dim);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+    }
+
+    .symbol {
+      display: inline-block;
+      background: var(--accent);
+      animation: symbolIn 0.18s ease-out;
+      flex: 0 0 auto;
+    }
+
+    .symbol.dot { width: 20px; height: 20px; border-radius: 50%; }
+    .symbol.dash { width: 52px; height: 20px; border-radius: 4px; }
+
+    .symbol--sm.dot { width: 7px; height: 7px; }
+    .symbol--sm.dash { width: 18px; height: 7px; border-radius: 2px; }
+
+    @keyframes symbolIn {
+      from { transform: scale(0.15); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .blink-flash {
+      position: absolute;
+      top: 8px;
+      right: 4px;
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--accent);
+      opacity: 0;
+      transform: scale(0.7);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      pointer-events: none;
+    }
+
+    .blink-flash.is-active { opacity: 1; transform: scale(1.2); }
+
+    .countdown-track {
+      height: 5px;
+      background: #1c1c1c;
+      border: 1px solid var(--panel-border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 14px;
+    }
+
+    .countdown-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+    }
+
+    /* ---- middle panel: typed output ---- */
+
+    .output-panel {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 120px;
+    }
+
+    .copy-btn {
+      font-family: var(--font-data);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 5px;
+      padding: 4px 10px;
+      cursor: pointer;
+      text-transform: none;
+    }
+
+    .copy-btn:hover { border-color: var(--accent-dim); color: var(--text-primary); }
+    .copy-btn.is-done { color: var(--accent); border-color: var(--accent-dim); }
+
+    .output-scroll {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      margin-top: 8px;
+      font-size: 26px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text-primary);
+    }
+
+    .output-scroll:empty::before,
+    .output-text:empty + .cursor::before { content: ""; }
+
+    .cursor {
+      display: inline-block;
+      width: 11px;
+      height: 24px;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      margin-left: 2px;
+      animation: cursorBlink 0.9s steps(1) infinite;
+    }
+
+    @keyframes cursorBlink {
+      0%, 49%  { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    /* ---- bottom panel: reference card ---- */
+
+    .reference-panel { flex: 0 0 auto; max-height: 240px; overflow-y: auto; }
+
+    .reference-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .ref-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 4px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      opacity: 1;
+      transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .ref-cell.is-unreachable { opacity: 0.25; }
+
+    .ref-cell.is-current {
+      border-color: var(--accent-dim);
+      background: rgba(198, 255, 0, 0.08);
+    }
+
+    .ref-cell__char {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .ref-cell__code {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      min-height: 7px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <header class="topbar">
+      <div class="topbar__brand">
+        <span class="logo">EMG<span class="logo__accent">·</span>MORSE</span>
+      </div>
+      <div class="topbar__right">
+        <div class="about-wrap">
+          <button class="about-btn" id="aboutBtn" type="button" aria-expanded="false" aria-label="About this tool">?</button>
+          <div class="about-popover" id="aboutPopover" role="tooltip" hidden>
+            <strong>Accessibility tool.</strong> This page types text using
+            only eye blinks, decoded from an EOG (electrooculography)
+            signal into Morse code in real time -- no hands, no keyboard.
+            It's built for anyone with limited or no hand/arm mobility
+            (e.g. ALS, spinal cord injury, or other motor-control
+            conditions) where a blink can remain one of the few reliably
+            repeatable voluntary movements available.
+          </div>
+        </div>
+        <div class="conn-indicator" id="connIndicator">
+          <span class="conn-indicator__dot" id="connDot"></span>
+          <span class="conn-indicator__label" id="connLabel">connecting&hellip;</span>
+        </div>
+        <a class="back-link" href="/">&larr; DASHBOARD</a>
+      </div>
+    </header>
+
+    <main class="layout">
+
+      <section class="panel builder-panel">
+        <div class="panel__label">
+          <span>CURRENT LETTER</span>
+          <span class="gesture-pill">
+            <span class="gesture-pill__label" id="gestureLabel">&mdash;</span>
+            <span id="gestureDetail"></span>
+          </span>
+        </div>
+        <div class="builder-body">
+          <div class="builder-symbols" id="builderSymbols"></div>
+          <div class="blink-flash" id="blinkFlash"></div>
+        </div>
+        <div class="countdown-track"><div class="countdown-bar" id="countdownBar"></div></div>
+      </section>
+
+      <section class="panel output-panel">
+        <div class="panel__label">
+          <span>TYPED TEXT</span>
+          <button class="copy-btn" id="copyBtn" type="button">COPY</button>
+        </div>
+        <div class="output-scroll" id="outputScroll">
+          <span class="output-text" id="outputTextEl"></span><span class="cursor"></span>
+        </div>
+      </section>
+
+      <section class="panel reference-panel">
+        <div class="panel__label"><span>MORSE REFERENCE</span></div>
+        <div class="reference-grid" id="referenceGrid"></div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+  (() => {
+    "use strict";
+
+    /* -----------------------------------------------------------------
+       EMG·MORSE -- types text from eye blinks decoded as Morse code.
+
+       Signaling model: BLINK COUNT within a burst, not blink DURATION.
+         1 isolated blink    -> ignored (a normal/involuntary blink)
+         2 blinks in a row   -> dot        (.)
+         3 blinks in a row   -> dash       (-)
+         4 blinks in a row   -> if a letter is mid-build (dots/dashes
+                                already showing), clears just that
+                                in-progress attempt; otherwise backspace
+                                (removes the last committed character --
+                                same as EMG hard_hold below, just
+                                reachable without the EMG pipeline)
+         5+ blinks in a row  -> dash (same bucket as 3, since intent is
+                                unclear past 4 and dash is the safer guess)
+         ("in a row" = each one arrives within BURST_GAP_MS of the last)
+         3.0s pause after the last blink -> decode + append the letter
+         6.0s pause -> append a word space
+
+       This went through two earlier designs before landing here, both
+       based on blink DURATION (short=dot/long=dash, then later
+       requiring a sustained ~1s+ hold for a dot specifically to filter
+       out normal blinking, per how "Blink-to-Code", arXiv:2508.09344,
+       a camera-based system, does it). Neither worked on this EOG rig:
+       a real deliberate ~1s hold, tested on the actual hardware, came
+       through as gesture: single_blink duration=111ms / 336ms -- short
+       transients at the start/end of the hold, not one sustained
+       elevated reading. That's expected for EOG specifically (as
+       opposed to a camera): the electrodes pick up the *movement* of
+       blinking, not the *state* of being closed, so a still, closed
+       eye can settle back near baseline even though the lid hasn't
+       reopened. Any duration-based dot/dash split inherits that
+       problem no matter where the cutoffs are set.
+
+       Blink COUNT sidesteps it entirely -- it only depends on
+       detecting discrete short blink events and their timing relative
+       to each other, which is exactly what this hardware showed it
+       already does reliably. It's also a better fit for "was this
+       intentional": people don't naturally blink twice or three times
+       in quick succession by accident nearly as often as they blink
+       once.
+
+       Uses the RAW 'eog_blink' event (duration_ms per completed blink,
+       no pairing/cooldown) rather than the classified 'eog_gesture'
+       single_blink/double_blink labels -- the recognizer holds a short
+       blink for up to 600ms waiting to see if a second one pairs it
+       into a double_blink, which is the exact burst this page wants to
+       count for itself, on its own timing (BURST_GAP_MS below), not
+       the recognizer's.
+
+       hard_hold / single_flex (via 'gesture') -> backspace / clear line.
+       This repo has no EMG classifier pipeline of its own anymore (see
+       server.py's docstring) -- these two labels only fire from
+       server.py's built-in `python3 server.py` standalone simulator, or
+       from a future EMG pipeline emitting the same 'gesture' event
+       shape. Without either running, dot/dash/4-blink-backspace (all
+       pure EOG, via eog_controller.py) are the only reachable input.
+    ----------------------------------------------------------------- */
+
+    // ---- timing ------------------------------------------------------
+
+    const BURST_GAP_MS = 900;  // if no new blink arrives within this long after the last
+                                // one, the current burst is over and gets finalized into
+                                // ignored/dot/dash by its count. Started at 600ms (matching
+                                // eog_controller.py's own DOUBLE_BLINK_GAP_MS) but that was
+                                // too tight a window to reliably fire off 2 or 3 deliberate
+                                // blinks in a row -- doing that consistently on command is
+                                // slower than it sounds, so bursts were splitting apart
+                                // (undercounting: an intended dash reading as a dot plus a
+                                // stray ignored blink, or an intended dot reading as two
+                                // separate ignored singles). 900ms gives more slack.
+    const LETTER_PAUSE_MS = 3000;  // must stay well above BURST_GAP_MS so a burst always
+                                    // finalizes into a symbol before the letter commits.
+                                    // Doubled from 1500 -- letters with several symbols
+                                    // (e.g. "5" = ".....", five separate 2-blink bursts)
+                                    // need real breathing room between each burst, not
+                                    // just within one.
+    const WORD_PAUSE_MS = 6000;     // kept at 2x LETTER_PAUSE_MS, same ratio as before
+
+    // ---- morse table ---------------------------------------------------
+
+    const MORSE_CODE = {
+      "A": ".-",    "B": "-...",  "C": "-.-.",  "D": "-..",   "E": ".",
+      "F": "..-.",  "G": "--.",   "H": "....",  "I": "..",    "J": ".---",
+      "K": "-.-",   "L": ".-..",  "M": "--",    "N": "-.",    "O": "---",
+      "P": ".--.",  "Q": "--.-",  "R": ".-.",   "S": "...",   "T": "-",
+      "U": "..-",   "V": "...-",  "W": ".--",   "X": "-..-",  "Y": "-.--",
+      "Z": "--..",
+      "0": "-----", "1": ".----", "2": "..---", "3": "...--", "4": "....-",
+      "5": ".....", "6": "-....", "7": "--...", "8": "---..", "9": "----.",
+    };
+    const CODE_TO_CHAR = Object.fromEntries(
+      Object.entries(MORSE_CODE).map(([ch, code]) => [code, ch])
+    );
+    const REFERENCE_ORDER = Object.keys(MORSE_CODE);
+
+    // ---- DOM refs ------------------------------------------------------
+
+    const connIndicator = document.getElementById("connIndicator");
+    const connLabel = document.getElementById("connLabel");
+    const gestureLabel = document.getElementById("gestureLabel");
+    const gestureDetail = document.getElementById("gestureDetail");
+
+    const builderSymbols = document.getElementById("builderSymbols");
+    const blinkFlash = document.getElementById("blinkFlash");
+    const countdownBar = document.getElementById("countdownBar");
+
+    const outputScroll = document.getElementById("outputScroll");
+    const outputTextEl = document.getElementById("outputTextEl");
+    const copyBtn = document.getElementById("copyBtn");
+
+    const referenceGrid = document.getElementById("referenceGrid");
+
+    const aboutBtn = document.getElementById("aboutBtn");
+    const aboutPopover = document.getElementById("aboutPopover");
+
+    // ---- state -----------------------------------------------------
+
+    let currentSeq = "";   // dots/dashes for the letter in progress
+    let typedText = "";
+    let letterTimer = null;
+    let wordTimer = null;
+
+    // ---- symbol rendering --------------------------------------------
+
+    function renderSymbols(container, seq, extraClass) {
+      container.textContent = "";
+      for (const ch of seq) {
+        const span = document.createElement("span");
+        span.className = `symbol ${ch === "." ? "dot" : "dash"} ${extraClass || ""}`;
+        container.appendChild(span);
+      }
+    }
+
+    function flashSymbol(kind) {
+      blinkFlash.textContent = kind === "dot" ? "·" : "−";
+      blinkFlash.classList.remove("is-active");
+      void blinkFlash.offsetWidth; // restart the CSS transition
+      blinkFlash.classList.add("is-active");
+      clearTimeout(flashSymbol._t);
+      flashSymbol._t = setTimeout(() => blinkFlash.classList.remove("is-active"), 220);
+    }
+
+    // ---- countdown bar ---------------------------------------------
+
+    function restartCountdown() {
+      countdownBar.style.transition = "none";
+      countdownBar.style.width = "100%";
+      void countdownBar.offsetWidth; // force reflow so the next line actually animates
+      countdownBar.style.transition = `width ${LETTER_PAUSE_MS}ms linear`;
+      countdownBar.style.width = "0%";
+    }
+
+    function hideCountdown() {
+      countdownBar.style.transition = "none";
+      countdownBar.style.width = "0%";
+    }
+
+    // ---- reference card ----------------------------------------------
+
+    const referenceEntries = [];
+
+    REFERENCE_ORDER.forEach((ch) => {
+      const code = MORSE_CODE[ch];
+      const cell = document.createElement("div");
+      cell.className = "ref-cell";
+
+      const charEl = document.createElement("div");
+      charEl.className = "ref-cell__char";
+      charEl.textContent = ch;
+
+      const codeEl = document.createElement("div");
+      codeEl.className = "ref-cell__code";
+      renderSymbols(codeEl, code, "symbol--sm");
+
+      cell.append(charEl, codeEl);
+      referenceGrid.appendChild(cell);
+      referenceEntries.push({ code, el: cell });
+    });
+
+    function updateReferenceHighlights() {
+      referenceEntries.forEach(({ code, el }) => {
+        const reachable = code.startsWith(currentSeq);
+        const exact = currentSeq.length > 0 && code === currentSeq;
+        el.classList.toggle("is-unreachable", !reachable);
+        el.classList.toggle("is-current", exact);
+      });
+    }
+
+    // ---- letter/word decode ------------------------------------------
+
+    function scheduleTimers() {
+      clearTimeout(letterTimer);
+      clearTimeout(wordTimer);
+      letterTimer = setTimeout(commitLetter, LETTER_PAUSE_MS);
+      wordTimer = setTimeout(commitWordSpace, WORD_PAUSE_MS);
+    }
+
+    function commitLetter() {
+      if (!currentSeq) return;
+      const ch = CODE_TO_CHAR[currentSeq] || "?";
+      appendToOutput(ch);
+      currentSeq = "";
+      renderSymbols(builderSymbols, currentSeq);
+      updateReferenceHighlights();
+      hideCountdown();
+    }
+
+    function commitWordSpace() {
+      if (typedText.length && !typedText.endsWith(" ")) {
+        appendToOutput(" ");
+      }
+    }
+
+    function appendToOutput(ch) {
+      typedText += ch;
+      renderOutput();
+    }
+
+    function backspace() {
+      typedText = typedText.slice(0, -1);
+      renderOutput();
+    }
+
+    function clearLine() {
+      typedText = "";
+      currentSeq = "";
+      clearTimeout(letterTimer);
+      clearTimeout(wordTimer);
+      renderSymbols(builderSymbols, currentSeq);
+      updateReferenceHighlights();
+      hideCountdown();
+      renderOutput();
+    }
+
+    function clearPendingSymbol() {
+      // Undoes only the letter currently being built (the dots/dashes
+      // shown in the top panel), leaving already-committed output text
+      // untouched -- see the 4-blink handling in finalizeBurst().
+      currentSeq = "";
+      renderSymbols(builderSymbols, currentSeq);
+      updateReferenceHighlights();
+      hideCountdown();
+    }
+
+    function renderOutput() {
+      outputTextEl.textContent = typedText;
+      outputScroll.scrollTop = outputScroll.scrollHeight;
+    }
+
+    function addSymbol(kind) {
+      const ch = kind === "dot" ? "." : "-";
+      currentSeq += ch;
+      renderSymbols(builderSymbols, currentSeq);
+      updateReferenceHighlights();
+      restartCountdown();
+      scheduleTimers();
+      flashSymbol(kind);
+    }
+
+    // ---- burst-based blink counting ----------------------------------
+    // See the module docstring for why this counts blinks in a burst
+    // rather than timing a single blink's duration.
+
+    let burstCount = 0;
+    let burstTimer = null;
+
+    function registerBurstBlink(durationMs) {
+      burstCount += 1;
+
+      // Any blink activity means the user isn't paused -- postpone the
+      // letter/word timers so one scheduled after an EARLIER symbol
+      // can't fire out from under an in-progress burst (e.g. mid-way
+      // through the blinks that make up a second symbol). They're
+      // rescheduled once this burst resolves, in finalizeBurst() below.
+      clearTimeout(letterTimer);
+      clearTimeout(wordTimer);
+
+      // Live feedback per blink, muted -- confirms detection is
+      // working without claiming a dot/dash until the burst resolves.
+      gestureLabel.textContent = `blink (${burstCount})`;
+      gestureLabel.setAttribute("data-gesture", "rest");
+      gestureDetail.textContent = `${Math.round(durationMs)}ms`;
+
+      clearTimeout(burstTimer);
+      burstTimer = setTimeout(finalizeBurst, BURST_GAP_MS);
+    }
+
+    function finalizeBurst() {
+      const count = burstCount;
+      burstCount = 0;
+      if (count <= 1) {
+        // A single isolated blink -- not a signal, but the letter/word
+        // timers were just postponed above and need restarting so a
+        // pending letter (or the eventual word-space) isn't stuck.
+        scheduleTimers();
+        return;
+      }
+
+      if (count === 4) {
+        // If a letter is already mid-build (dots/dashes visible in the
+        // top panel), undo just that in-progress attempt rather than
+        // reaching back to delete text that's already been committed --
+        // those aren't "entered" yet, so clearing them is the more
+        // obviously-correct undo. Only fall back to removing the last
+        // committed character when nothing is pending.
+        if (currentSeq) {
+          gestureLabel.textContent = "blink ×4 → clear letter";
+          gestureLabel.setAttribute("data-gesture", "hard_hold");
+          clearPendingSymbol();
+        } else {
+          gestureLabel.textContent = "blink ×4 → backspace";
+          gestureLabel.setAttribute("data-gesture", "hard_hold");
+          backspace();
+        }
+        scheduleTimers(); // neither branch above calls addSymbol(), so restart these manually
+        return;
+      }
+
+      const kind = count === 2 ? "dot" : "dash"; // 3 or 5+ both read as dash
+      gestureLabel.textContent = `blink ×${count} → ${kind}`;
+      gestureLabel.setAttribute("data-gesture", kind === "dash" ? "hard_hold" : "single_blink");
+      addSymbol(kind); // addSymbol() schedules fresh letter/word timers
+    }
+
+    // ---- copy to clipboard ------------------------------------------
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(typedText);
+        copyBtn.textContent = "COPIED";
+        copyBtn.classList.add("is-done");
+      } catch (_) {
+        copyBtn.textContent = "FAILED";
+        copyBtn.classList.remove("is-done");
+      }
+      clearTimeout(copyBtn._t);
+      copyBtn._t = setTimeout(() => {
+        copyBtn.textContent = "COPY";
+        copyBtn.classList.remove("is-done");
+      }, 1200);
+    });
+
+    // ---- about popover -------------------------------------------------
+
+    function setAboutOpen(open) {
+      aboutPopover.toggleAttribute("hidden", !open);
+      aboutBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    aboutBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setAboutOpen(aboutPopover.hasAttribute("hidden"));
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!aboutPopover.hasAttribute("hidden") && !aboutPopover.contains(e.target)) {
+        setAboutOpen(false);
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setAboutOpen(false);
+    });
+
+    // ---- socket ----------------------------------------------------
+    // Same fallback pattern the rest of this project's standalone tool
+    // pages use: normally this page is served by the Flask/SocketIO
+    // backend itself (same-origin io() just works), but if opened
+    // through an IDE live-preview server or as a file:// URL, fall back
+    // to the backend's default address.
+
+    const DEFAULT_BACKEND = `http://${location.hostname || "localhost"}:8080`;
+    const serverOverride = new URLSearchParams(location.search).get("server");
+
+    let socket = null;
+
+    function bindSocket(s) {
+      s.on("connect", () => {
+        connIndicator.classList.add("is-connected");
+        connIndicator.classList.remove("is-reconnecting");
+        connLabel.textContent = "connected";
+        // Tell the backend this is a focus-mode tool page so
+        // eog_controller suppresses its remaining OS-level action
+        // (long_blink's play/pause) while typing.
+        s.emit("focus_mode", { active: true });
+      });
+
+      s.on("disconnect", () => {
+        connIndicator.classList.remove("is-connected");
+        connIndicator.classList.add("is-reconnecting");
+        connLabel.textContent = "reconnecting…";
+      });
+
+      // EMG classifier gestures -- hard_hold backspaces, single_flex
+      // clears the line. See the module docstring for when these fire.
+      s.on("gesture", (msg) => {
+        const pct = Math.round(Math.max(0, Math.min(1, msg.confidence || 0)) * 100);
+        gestureLabel.textContent = msg.label;
+        gestureLabel.setAttribute("data-gesture", msg.label);
+        gestureDetail.textContent = `${pct}%`;
+
+        if (msg.label === "hard_hold") backspace();
+        else if (msg.label === "single_flex") clearLine();
+      });
+
+      // Raw completed blink -- see module docstring for why this (not
+      // eog_gesture) drives dot/dash.
+      s.on("eog_blink", (msg) => {
+        registerBurstBlink(msg.duration_ms || 0);
+      });
+    }
+
+    function connectTo(url, label) {
+      socket = url ? io(url) : io();
+      bindSocket(socket);
+      if (label) connLabel.textContent = label;
+    }
+
+    window.addEventListener("pagehide", () => {
+      if (socket && socket.connected) socket.emit("focus_mode", { active: false });
+    });
+
+    if (serverOverride) {
+      connectTo(`http://${serverOverride.replace(/^https?:\/\//, "")}`);
+    } else if (location.protocol === "file:") {
+      connectTo(DEFAULT_BACKEND);
+    } else {
+      connectTo(null);
+      let failures = 0;
+      socket.on("connect_error", () => {
+        failures += 1;
+        if (failures >= 2 && location.port !== "8080") {
+          socket.close();
+          connectTo(DEFAULT_BACKEND, "trying :8080…");
+        }
+      });
+    }
+
+    // ---- initial paint ------------------------------------------------
+
+    renderSymbols(builderSymbols, currentSeq);
+    updateReferenceHighlights();
+    renderOutput();
+  })();
+  </script>
+</body>
+</html>
