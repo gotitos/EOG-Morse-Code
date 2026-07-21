@@ -1,4 +1,4 @@
-# EMG·MORSE
+# EMG·MORSE CODE TRANSLATOR
 
 An accessibility-focused Morse code typer controlled entirely by eye
 blinks. Reads a single-channel EOG (electrooculography) stream off a
