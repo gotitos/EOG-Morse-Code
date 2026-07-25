@@ -7,10 +7,8 @@ baseline, classifies them by how many happen in a row (not how long
 they last), decodes the resulting dot/dash sequence as Morse code in
 real time, and streams everything to a live dashboard over WebSockets.
 
-Built for anyone with limited or no hand/arm mobility (e.g. ALS, spinal
-cord injury, or other motor-control conditions), where a blink can
-remain one of the few reliably repeatable voluntary movements
-available.
+
+I classified the number of blinks to coincide with dots and dash since the kit was too basic in recording normals everyday human blinks. In order to successfully record blinks the user has to blink multiple times as well as blink harder than normal. 
 
 ## Required Items
 * Backyard Brain's Spiker:bit & Micro:bit
@@ -99,7 +97,7 @@ being closed, so a sustained hold doesn't produce a sustained reading.
 | 2 | dot (`.`) |
 | 3 | dash (`-`) |
 | 4 | clear the in-progress letter, or backspace if nothing's pending |
-| 5+ | dash (same bucket as 3) |
+
 
 A 3-second pause after the last blink decodes the built-up sequence
 into a letter; a 6-second pause appends a word space.
