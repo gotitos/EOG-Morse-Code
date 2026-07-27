@@ -1,4 +1,4 @@
-# EMG·MORSE CODE TRANSLATOR
+# EMG·MORSE
 
 An accessibility-focused Morse code typer controlled entirely by eye
 blinks. Reads a single-channel EOG (electrooculography) stream off a
@@ -7,32 +7,11 @@ baseline, classifies them by how many happen in a row (not how long
 they last), decodes the resulting dot/dash sequence as Morse code in
 real time, and streams everything to a live dashboard over WebSockets.
 
+Built for anyone with limited or no hand/arm mobility (e.g. ALS, spinal
+cord injury, or other motor-control conditions), where a blink can
+remain one of the few reliably repeatable voluntary movements
+available.
 
-I classified the number of blinks to coincide with dots and dash since the kit was too basic in recording normals everyday human blinks. In order to successfully record blinks the user has to blink multiple times as well as blink harder than normal. 
-
-## Required Items
-* Backyard Brain's Spiker:bit & Micro:bit
-* 3 Electrodes (included in kit)
-* USB Micro to USB C
-* IDE of choice
-
-
-## MakeCode Serial Data Code
-```
-serial.setBaudRate(BaudRate.BaudRate115200)
-
-basic.forever(function () {
-    serial.writeLine("" + pins.analogReadPin(AnalogPin.P1))
-    basic.pause(2)
-})
-```
-## Spiker:bit & Microbit Setup
-1. Insert micro:bit into spiker:bit with LED side facing user.
-2. Connect Laptop / PC to spiker:bit
-3. Open Micro:bit MakeCode software and create a new project. Install extension **Spikerbit**
-4. Copy paste makecode code and download into Spiker:bit
-5. Place 1 electrode on your temple, second above the same eye and last one behind your ear.
-6. Click **View Data** to see a moving graph 
 ## Hardware setup
 
 ```
@@ -97,7 +76,7 @@ being closed, so a sustained hold doesn't produce a sustained reading.
 | 2 | dot (`.`) |
 | 3 | dash (`-`) |
 | 4 | clear the in-progress letter, or backspace if nothing's pending |
-
+| 5+ | dash (same bucket as 3) |
 
 A 3-second pause after the last blink decodes the built-up sequence
 into a letter; a 6-second pause appends a word space.

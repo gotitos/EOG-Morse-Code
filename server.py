@@ -20,9 +20,6 @@ Emits (server -> browser):
                                                      (backspace) / single_flex (clear line)
                                                      listen for this; reachable today only
                                                      via that same __main__ demo mode
-    calibrating    {progress: float}                baseline calibration progress, same channel
-    ai_token       {token: str}                      unimplemented; no producer exists
-    ai_done        {}                                 unimplemented; no producer exists
 
 Receives (browser -> server):
     set_mode       {mode: 'emg' | 'eeg'}   Phase 2 scaffold, see handler below.
@@ -177,9 +174,6 @@ class EMGServer:
             self._gesture_history.append(event)
         self.socketio.emit("gesture", event)
 
-    def emit_calibrating(self, progress):
-        self.socketio.emit("calibrating", {"progress": progress})
-
     def emit_eog_signal(self, value, timestamp):
         """Raw EOG sample for the dashboard's EOG waveform canvas."""
         self.socketio.emit("eog_signal", {"value": value, "timestamp": timestamp})
@@ -216,16 +210,6 @@ class EMGServer:
         baud rate, window size, model name -- shown in the dashboard's
         status bar)."""
         self.status.update(kwargs)
-
-    def emit_ai_token(self, token):
-        """TODO(AI integration): not called anywhere -- no AI client
-        exists in this repo. Wire this up to a streaming callback if one
-        is added later."""
-        self.socketio.emit("ai_token", {"token": token})
-
-    def emit_ai_done(self):
-        """TODO(AI integration): see emit_ai_token()."""
-        self.socketio.emit("ai_done", {})
 
     # -- lifecycle ---------------------------------------------------------
 
