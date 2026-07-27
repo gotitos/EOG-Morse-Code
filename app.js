@@ -9,15 +9,12 @@
 
   const WINDOW_SEC = 5;       // how much history the waveform shows
   const SIGNAL_MAX = 1023;    // ADC range
-  const MAX_AI_MESSAGES = 8;  // hard cap on retained AI message DOM nodes
-  const AI_FADE_AFTER = 5;    // messages beyond this index start fading
   const MAX_GESTURE_HISTORY = 50; // persistent client-side gesture log cap
 
   // ---- DOM refs ---------------------------------------------------------
 
   const canvas = document.getElementById("waveform");
   const ctx = canvas.getContext("2d");
-  const waveformLabel = document.querySelector(".waveform-panel .panel__label");
 
   const eogCanvas = document.getElementById("eogWaveform");
   const eogCtx = eogCanvas.getContext("2d");
@@ -42,9 +39,6 @@
   const lastTriggeredEl = document.getElementById("lastTriggered");
 
   const gestureLog = document.getElementById("gestureLog");
-
-  const aiFeed = document.getElementById("aiFeed");
-  const aiEmpty = document.getElementById("aiEmpty");
 
   const statPort = document.getElementById("statPort");
   const statBaud = document.getElementById("statBaud");
@@ -235,17 +229,6 @@
   resizeCanvas();
   requestAnimationFrame(renderLoop);
 
-  // ---- calibration progress -------------------------------------------
-
-  socket.on("calibrating", (msg) => {
-    const pct = Math.round((msg.progress || 0) * 100);
-    if (pct >= 100) {
-      waveformLabel.textContent = "SIGNAL — LAST 5s";
-    } else {
-      waveformLabel.textContent = `CALIBRATING BASELINE… ${pct}%`;
-    }
-  });
-
   // ---- gesture readout + persistent history ------------------------
 
   function formatTime(date) {
@@ -319,8 +302,6 @@
     renderGestureLog();
   }
 
-  let lastActiveGestureLabel = null;
-
   socket.on("gesture", (msg) => {
     gestureLabelEl.textContent = msg.label;
     gestureLabelEl.setAttribute("data-gesture", msg.label);
@@ -333,10 +314,6 @@
       ? formatTime(new Date(msg.timestamp * 1000))
       : formatTime(new Date());
 
-    if (msg.label !== "rest") {
-      lastActiveGestureLabel = msg.label;
-    }
-
     addGestureToHistory(msg);
   });
 
@@ -347,69 +324,6 @@
   // what's already on screen.
   socket.on("history", (msg) => {
     (msg.events || []).forEach(addGestureToHistory);
-  });
-
-  // ---- AI response panel -------------------------------------------
-  // NOTE: no AI client exists in this repo, so ai_token / ai_done are
-  // never actually emitted by the backend in this build. The handlers
-  // below are wired up and ready for whenever one is added -- they just
-  // won't fire until then, which is why aiEmpty stays visible.
-
-  let currentAiMessageEl = null;
-  let currentAiTextEl = null;
-  let aiMessages = [];
-
-  function pruneAiMessages() {
-    aiMessages.forEach((el, idx) => {
-      el.classList.toggle("is-fading", idx >= AI_FADE_AFTER);
-    });
-    while (aiMessages.length > MAX_AI_MESSAGES) {
-      const stale = aiMessages.pop();
-      stale.remove();
-    }
-  }
-
-  socket.on("ai_token", (msg) => {
-    if (aiEmpty) aiEmpty.remove();
-
-    if (!currentAiMessageEl) {
-      const gesture = lastActiveGestureLabel || "gesture";
-
-      currentAiMessageEl = document.createElement("div");
-      currentAiMessageEl.className = "ai-message";
-      currentAiMessageEl.setAttribute("data-gesture", gesture);
-
-      const tag = document.createElement("div");
-      tag.className = "ai-message__tag";
-      tag.textContent = `${gesture} · ${formatTime(new Date())}`;
-
-      currentAiTextEl = document.createElement("span");
-      currentAiTextEl.className = "ai-message__text";
-
-      const cursor = document.createElement("span");
-      cursor.className = "ai-cursor";
-
-      currentAiMessageEl.appendChild(tag);
-      const body = document.createElement("div");
-      body.appendChild(currentAiTextEl);
-      body.appendChild(cursor);
-      currentAiMessageEl.appendChild(body);
-
-      aiFeed.insertBefore(currentAiMessageEl, aiFeed.firstChild);
-      aiMessages.unshift(currentAiMessageEl);
-      pruneAiMessages();
-    }
-
-    currentAiTextEl.textContent += msg.token;
-  });
-
-  socket.on("ai_done", () => {
-    if (currentAiMessageEl) {
-      const cursor = currentAiMessageEl.querySelector(".ai-cursor");
-      if (cursor) cursor.remove();
-    }
-    currentAiMessageEl = null;
-    currentAiTextEl = null;
   });
 
   // ---- EOG gesture readout + action log --------------------------------

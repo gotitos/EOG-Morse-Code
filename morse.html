@@ -544,6 +544,7 @@
     }
 
     function backspace() {
+      if (!typedText.length) return;
       typedText = typedText.slice(0, -1);
       renderOutput();
     }
