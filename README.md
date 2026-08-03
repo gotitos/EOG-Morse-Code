@@ -7,10 +7,20 @@ baseline, classifies them by how many happen in a row (not how long
 they last), decodes the resulting dot/dash sequence as Morse code in
 real time, and streams everything to a live dashboard over WebSockets.
 
-Built for anyone with limited or no hand/arm mobility (e.g. ALS, spinal
-cord injury, or other motor-control conditions), where a blink can
-remain one of the few reliably repeatable voluntary movements
-available.
+Built using Backyard Brain's Neurological Kit. Using their Micro:bit makecode and python serial, I used the data outputted from the Spiker:bit to transmit it through a python script in order to read EOG spikes and translate it to dots or dashes. 
+
+
+##Micro:bit Makecode 
+```
+serial.setBaudRate(BaudRate.BaudRate115200)
+
+basic.forever(function () {
+    serial.writeLine("" + pins.analogReadPin(AnalogPin.P1))
+    basic.pause(2)
+})
+```
+
+
 
 ## Hardware setup
 
