@@ -10,7 +10,7 @@ real time, and streams everything to a live dashboard over WebSockets.
 Built using Backyard Brain's Neurological Kit. Using their Micro:bit makecode and python serial, I used the data outputted from the Spiker:bit to transmit it through a python script in order to read EOG spikes and translate it to dots or dashes. 
 
 
-##Micro:bit Makecode 
+## Micro:bit Makecode 
 ```
 serial.setBaudRate(BaudRate.BaudRate115200)
 
@@ -19,6 +19,9 @@ basic.forever(function () {
     basic.pause(2)
 })
 ```
+
+## Electrode Set Up
+<img width="658" height="355" alt="Screenshot 2026-08-07 at 1 56 04 PM" src="https://github.com/user-attachments/assets/4cc0b3b5-95e6-4a3d-bdba-2629c0c2d171" />
 
 
 
